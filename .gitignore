@@ -43,3 +43,7 @@ crashlytics-build.properties
 
 # Auto-generated
 Assets/AssetStoreTools*
+
+# Build artifacts
+Screenshots/
+Logs/
