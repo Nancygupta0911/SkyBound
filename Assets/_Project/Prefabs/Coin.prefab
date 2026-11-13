@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7266542871341215766}
   - component: {fileID: 5872946104234299175}
+  - component: {fileID: 7902072450846506613}
   m_Layer: 0
   m_Name: Coin
   m_TagString: Untagged
@@ -54,6 +55,22 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.55
   m_Center: {x: 0, y: 0.22, z: 0}
+--- !u!114 &7902072450846506613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9096734777757024474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b61cab2c8592d2040b3dbdd1449a3da7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Skybound.Coin
+  rotationSpeed: 150
+  bobHeight: 0.14
+  bobSpeed: 1.8
+  collectEffect: {fileID: 928787160983514629, guid: 570bbe86b3e64fd42877d5a64ae54a50, type: 3}
 --- !u!1001 &6245742274422963154
 PrefabInstance:
   m_ObjectHideFlags: 0
