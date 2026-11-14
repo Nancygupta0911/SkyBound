@@ -34,6 +34,7 @@ public static class BuildGameplay
         TMP_FontAsset font = EnsureFont(log);
         Sprite panelSprite = EnsurePanelSprite(log);
         Sprite coinIcon = EnsureCoinIcon(log);
+        Sprite glowSprite = EnsureGlowSprite(log);
         Material burstMaterial = EnsureBurstMaterial(log);
         GameObject burstPrefab = EnsureBurstPrefab(burstMaterial, log);
         UpdateCoinPrefab(burstPrefab, log);
@@ -42,7 +43,7 @@ public static class BuildGameplay
         EnsureGameManager(log);
         EnsureDeathZone(log);
         EnsureEventSystem(log);
-        EnsureUI(font, panelSprite, coinIcon, log);
+        EnsureUI(font, panelSprite, coinIcon, glowSprite, log);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
@@ -107,6 +108,36 @@ public static class BuildGameplay
         if (!File.Exists(path)) GenerateCoinIcon(path, 128);
         ConfigureSprite(path, Vector4.zero, log, "UI_CoinIcon");
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+    }
+
+    static Sprite EnsureGlowSprite(StringBuilder log)
+    {
+        string path = SpriteDir + "/UI_Glow.png";
+        if (!File.Exists(path)) GenerateGlow(path, 256);
+        ConfigureSprite(path, Vector4.zero, log, "UI_Glow");
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+    }
+
+    static void GenerateGlow(string path, int size)
+    {
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var pixels = new Color32[size * size];
+        float center = size * 0.5f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x + 0.5f - center) / center;
+                float dy = (y + 0.5f - center) / center;
+                float distance = Mathf.Sqrt(dx * dx + dy * dy);
+                float alpha = Mathf.Clamp01(1f - distance);
+                alpha = alpha * alpha * (3f - 2f * alpha);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        WriteTexture(path, texture, pixels);
     }
 
     static void ConfigureSprite(string path, Vector4 border, StringBuilder log, string label)
@@ -364,7 +395,7 @@ public static class BuildGameplay
         log.AppendLine("EventSystem created with InputSystemUIInputModule.");
     }
 
-    static void EnsureUI(TMP_FontAsset font, Sprite panelSprite, Sprite coinIcon, StringBuilder log)
+    static void EnsureUI(TMP_FontAsset font, Sprite panelSprite, Sprite coinIcon, Sprite glowSprite, StringBuilder log)
     {
         var existing = GameObject.Find("UI");
         if (existing != null) Object.DestroyImmediate(existing);
@@ -387,6 +418,8 @@ public static class BuildGameplay
         hud.pivot = new Vector2(0f, 1f);
         hud.anchoredPosition = new Vector2(32f, -32f);
         hud.sizeDelta = new Vector2(390f, 100f);
+        var hudGroup = hud.gameObject.AddComponent<CanvasGroup>();
+        hudGroup.alpha = 0f;
 
         var shadow = NewRect("Shadow", hud);
         shadow.anchorMin = Vector2.zero;
@@ -435,9 +468,18 @@ public static class BuildGameplay
         var gameOver = BuildGameOver(canvasObject.transform, font, panelSprite, out CanvasGroup gameOverGroup,
             out RectTransform gameOverPanel, out TMP_Text gameOverScore, out Button restartButton);
 
+        var startScreen = BuildStartScreen(canvasObject.transform, font, panelSprite, coinIcon, glowSprite,
+            out CanvasGroup startGroup, out RectTransform startPanel, out RectTransform startTitle, out Button playButton);
+
         var serialized = new SerializedObject(uiManager);
+        serialized.FindProperty("hudGroup").objectReferenceValue = hudGroup;
         serialized.FindProperty("coinLabel").objectReferenceValue = label;
         serialized.FindProperty("coinPulseTarget").objectReferenceValue = labelRect;
+        serialized.FindProperty("startScreen").objectReferenceValue = startScreen;
+        serialized.FindProperty("startScreenGroup").objectReferenceValue = startGroup;
+        serialized.FindProperty("startScreenPanel").objectReferenceValue = startPanel;
+        serialized.FindProperty("startTitle").objectReferenceValue = startTitle;
+        serialized.FindProperty("playButton").objectReferenceValue = playButton;
         serialized.FindProperty("gameOverScreen").objectReferenceValue = gameOver;
         serialized.FindProperty("gameOverGroup").objectReferenceValue = gameOverGroup;
         serialized.FindProperty("gameOverPanel").objectReferenceValue = gameOverPanel;
@@ -447,7 +489,7 @@ public static class BuildGameplay
         EditorUtility.SetDirty(uiManager);
 
         gameOver.SetActive(false);
-        log.AppendLine("HUD and Game Over screen created.");
+        log.AppendLine("Title screen, HUD and Game Over screen created.");
     }
 
     static GameObject BuildGameOver(Transform parent, TMP_FontAsset font, Sprite panelSprite,
@@ -497,25 +539,110 @@ public static class BuildGameplay
         Center(buttonShadow, new Vector2(0f, -130f), new Vector2(340f, 96f));
         AddSliced(buttonShadow, panelSprite, new Color(0.01f, 0.02f, 0.05f, 0.45f), false);
 
-        RectTransform buttonRect = NewRect("Restart", panel);
-        Center(buttonRect, new Vector2(0f, -120f), new Vector2(340f, 96f));
-        var buttonImage = AddSliced(buttonRect, panelSprite, new Color(0.18f, 0.52f, 0.95f, 1f), true);
+        restart = CreateButton(panel, "Restart", "RESTART", font, panelSprite,
+            new Vector2(0f, -120f), new Vector2(340f, 96f), new Color(0.18f, 0.52f, 0.95f, 1f));
 
-        restart = buttonRect.gameObject.AddComponent<Button>();
-        restart.targetGraphic = buttonImage;
-        var colors = restart.colors;
+        return screen.gameObject;
+    }
+
+    static GameObject BuildStartScreen(Transform parent, TMP_FontAsset font, Sprite panelSprite,
+        Sprite coinIcon, Sprite glowSprite,
+        out CanvasGroup group, out RectTransform panel, out RectTransform title, out Button play)
+    {
+        RectTransform screen = NewRect("StartScreen", parent);
+        Stretch(screen);
+        group = screen.gameObject.AddComponent<CanvasGroup>();
+
+        RectTransform backdrop = NewRect("Backdrop", screen);
+        Stretch(backdrop);
+        var backdropImage = backdrop.gameObject.AddComponent<Image>();
+        backdropImage.color = new Color(0.03f, 0.06f, 0.12f, 0.55f);
+
+        RectTransform glow = NewRect("Glow", screen);
+        Center(glow, new Vector2(0f, 30f), new Vector2(1500f, 950f));
+        var glowImage = glow.gameObject.AddComponent<Image>();
+        glowImage.sprite = glowSprite;
+        glowImage.color = new Color(1f, 0.84f, 0.42f, 0.30f);
+        glowImage.raycastTarget = false;
+
+        RectTransform panelShadow = NewRect("PanelShadow", screen);
+        Center(panelShadow, new Vector2(0f, -14f), new Vector2(900f, 580f));
+        AddSliced(panelShadow, panelSprite, new Color(0.01f, 0.02f, 0.05f, 0.45f), false);
+
+        panel = NewRect("Panel", screen);
+        Center(panel, Vector2.zero, new Vector2(900f, 580f));
+        AddSliced(panel, panelSprite, new Color(0.07f, 0.11f, 0.21f, 0.96f), true);
+
+        RectTransform accent = NewRect("Accent", panel);
+        accent.anchorMin = new Vector2(0.5f, 1f);
+        accent.anchorMax = new Vector2(0.5f, 1f);
+        accent.pivot = new Vector2(0.5f, 1f);
+        accent.anchoredPosition = new Vector2(0f, -28f);
+        accent.sizeDelta = new Vector2(680f, 5f);
+        var accentImage = accent.gameObject.AddComponent<Image>();
+        accentImage.color = new Color(1f, 0.82f, 0.32f, 0.9f);
+        accentImage.raycastTarget = false;
+
+        title = NewRect("Title", panel);
+        Center(title, new Vector2(0f, 158f), new Vector2(840f, 140f));
+        AddText(title, font, "SKYBOUND", 106f, new Color(1f, 0.95f, 0.82f), TextAlignmentOptions.Center);
+
+        RectTransform subtitleRect = NewRect("Subtitle", panel);
+        Center(subtitleRect, new Vector2(0f, 74f), new Vector2(800f, 34f));
+        var subtitle = AddText(subtitleRect, font, "A FLOATING ISLAND ADVENTURE", 26f,
+            new Color(0.62f, 0.72f, 0.9f), TextAlignmentOptions.Center);
+        subtitle.characterSpacing = 12f;
+
+        play = CreateButton(panel, "Play", "PLAY", font, panelSprite,
+            new Vector2(0f, -40f), new Vector2(360f, 104f), new Color(0.18f, 0.52f, 0.95f, 1f));
+
+        RectTransform hintRect = NewRect("Hint", panel);
+        Center(hintRect, new Vector2(0f, -160f), new Vector2(760f, 30f));
+        AddText(hintRect, font, "COLLECT ALL 58 COINS", 22f,
+            new Color(0.55f, 0.65f, 0.82f), TextAlignmentOptions.Center);
+
+        RectTransform coinLeft = NewRect("CoinLeft", panel);
+        Center(coinLeft, new Vector2(-380f, -158f), new Vector2(48f, 48f));
+        var coinLeftImage = coinLeft.gameObject.AddComponent<Image>();
+        coinLeftImage.sprite = coinIcon;
+        coinLeftImage.preserveAspect = true;
+        coinLeftImage.raycastTarget = false;
+
+        RectTransform coinRight = NewRect("CoinRight", panel);
+        Center(coinRight, new Vector2(380f, -158f), new Vector2(48f, 48f));
+        var coinRightImage = coinRight.gameObject.AddComponent<Image>();
+        coinRightImage.sprite = coinIcon;
+        coinRightImage.preserveAspect = true;
+        coinRightImage.raycastTarget = false;
+
+        return screen.gameObject;
+    }
+
+    static Button CreateButton(Transform parent, string name, string label, TMP_FontAsset font, Sprite sprite,
+        Vector2 position, Vector2 size, Color color)
+    {
+        RectTransform shadow = NewRect(name + "Shadow", parent);
+        Center(shadow, position + new Vector2(0f, -10f), size);
+        AddSliced(shadow, sprite, new Color(0.01f, 0.02f, 0.05f, 0.45f), false);
+
+        RectTransform rect = NewRect(name, parent);
+        Center(rect, position, size);
+        var image = AddSliced(rect, sprite, color, true);
+
+        var button = rect.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        var colors = button.colors;
         colors.normalColor = Color.white;
         colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f, 1f);
         colors.pressedColor = new Color(0.78f, 0.84f, 0.95f, 1f);
         colors.selectedColor = Color.white;
         colors.fadeDuration = 0.08f;
-        restart.colors = colors;
+        button.colors = colors;
 
-        RectTransform buttonLabel = NewRect("Label", buttonRect);
-        Stretch(buttonLabel);
-        AddText(buttonLabel, font, "RESTART", 42f, new Color(1f, 0.96f, 0.86f), TextAlignmentOptions.Center);
-
-        return screen.gameObject;
+        RectTransform labelRect = NewRect("Label", rect);
+        Stretch(labelRect);
+        AddText(labelRect, font, label, 42f, new Color(1f, 0.96f, 0.86f), TextAlignmentOptions.Center);
+        return button;
     }
 
     static void Stretch(RectTransform rect)

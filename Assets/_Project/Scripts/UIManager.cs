@@ -6,14 +6,22 @@ using UnityEngine.UI;
 namespace Skybound
 {
     /// <summary>
-    /// Drives the HUD and the Game Over screen from <see cref="GameManager"/> events.
-    /// All animation uses unscaled time so it still plays while the game is paused or ended.
+    /// Drives the title screen, HUD and Game Over screen from <see cref="GameManager"/> events.
+    /// All animation uses unscaled time so it still plays while the game is ended.
     /// </summary>
     public class UIManager : MonoBehaviour
     {
         [Header("HUD")]
+        [SerializeField] private CanvasGroup hudGroup;
         [SerializeField] private TMP_Text coinLabel;
         [SerializeField] private RectTransform coinPulseTarget;
+
+        [Header("Start Screen")]
+        [SerializeField] private GameObject startScreen;
+        [SerializeField] private CanvasGroup startScreenGroup;
+        [SerializeField] private RectTransform startScreenPanel;
+        [SerializeField] private RectTransform startTitle;
+        [SerializeField] private Button playButton;
 
         [Header("Game Over")]
         [SerializeField] private GameObject gameOverScreen;
@@ -24,11 +32,19 @@ namespace Skybound
 
         private Coroutine _pulse;
         private Coroutine _screenFade;
+        private Coroutine _startFade;
+        private Coroutine _hudFade;
+        private Vector2 _titleBasePosition;
 
         private void Awake()
         {
             if (gameOverScreen != null) gameOverScreen.SetActive(false);
+            if (startScreen != null) startScreen.SetActive(true);
+            if (hudGroup != null) hudGroup.alpha = 0f;
+            if (startTitle != null) _titleBasePosition = startTitle.anchoredPosition;
+
             if (restartButton != null) restartButton.onClick.AddListener(HandleRestartClicked);
+            if (playButton != null) playButton.onClick.AddListener(HandlePlayClicked);
         }
 
         private void Start()
@@ -40,11 +56,26 @@ namespace Skybound
             manager.PlayerDied += HandlePlayerDied;
             manager.RunReset += HandleRunReset;
             HandleCoinsChanged(manager.Coins, manager.TotalCoins);
+
+            if (startScreen != null && startScreen.activeSelf)
+            {
+                if (_startFade != null) StopCoroutine(_startFade);
+                _startFade = StartCoroutine(AnimateScreenIn(startScreenGroup, startScreenPanel, 0.55f, 0.94f));
+            }
+        }
+
+        private void Update()
+        {
+            if (startTitle == null || startScreen == null || !startScreen.activeSelf) return;
+
+            float bob = Mathf.Sin(Time.unscaledTime * 1.5f) * 4f;
+            startTitle.anchoredPosition = _titleBasePosition + new Vector2(0f, bob);
         }
 
         private void OnDestroy()
         {
             if (restartButton != null) restartButton.onClick.RemoveListener(HandleRestartClicked);
+            if (playButton != null) playButton.onClick.RemoveListener(HandlePlayClicked);
 
             GameManager manager = GameManager.Instance;
             if (manager == null) return;
@@ -52,6 +83,24 @@ namespace Skybound
             manager.CoinsChanged -= HandleCoinsChanged;
             manager.PlayerDied -= HandlePlayerDied;
             manager.RunReset -= HandleRunReset;
+        }
+
+        private void HandlePlayClicked()
+        {
+            if (GameManager.Instance != null) GameManager.Instance.StartRun();
+
+            if (startScreen != null) startScreen.SetActive(false);
+            if (_startFade != null)
+            {
+                StopCoroutine(_startFade);
+                _startFade = null;
+            }
+
+            if (hudGroup != null)
+            {
+                if (_hudFade != null) StopCoroutine(_hudFade);
+                _hudFade = StartCoroutine(FadeHud(1f, 0.35f));
+            }
         }
 
         private void HandleRestartClicked()
@@ -79,7 +128,7 @@ namespace Skybound
             gameOverScreen.SetActive(true);
 
             if (_screenFade != null) StopCoroutine(_screenFade);
-            _screenFade = StartCoroutine(FadeIn());
+            _screenFade = StartCoroutine(AnimateScreenIn(gameOverGroup, gameOverPanel, 0.35f, 0.92f));
         }
 
         private void HandleRunReset()
@@ -91,6 +140,7 @@ namespace Skybound
             }
 
             if (gameOverScreen != null) gameOverScreen.SetActive(false);
+            if (hudGroup != null) hudGroup.alpha = 1f;
         }
 
         private IEnumerator Pulse()
@@ -110,12 +160,27 @@ namespace Skybound
             _pulse = null;
         }
 
-        private IEnumerator FadeIn()
+        private IEnumerator FadeHud(float target, float duration)
         {
-            const float duration = 0.35f;
+            if (hudGroup == null) yield break;
 
-            if (gameOverGroup != null) gameOverGroup.alpha = 0f;
-            if (gameOverPanel != null) gameOverPanel.localScale = Vector3.one * 0.92f;
+            float start = hudGroup.alpha;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                hudGroup.alpha = Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / duration));
+                yield return null;
+            }
+
+            hudGroup.alpha = target;
+            _hudFade = null;
+        }
+
+        private IEnumerator AnimateScreenIn(CanvasGroup group, RectTransform panel, float duration, float fromScale)
+        {
+            if (group != null) group.alpha = 0f;
+            if (panel != null) panel.localScale = Vector3.one * fromScale;
 
             float elapsed = 0f;
             while (elapsed < duration)
@@ -124,16 +189,18 @@ namespace Skybound
                 float t = Mathf.Clamp01(elapsed / duration);
                 float eased = 1f - Mathf.Pow(1f - t, 3f);
 
-                if (gameOverGroup != null) gameOverGroup.alpha = eased;
-                if (gameOverPanel != null)
-                    gameOverPanel.localScale = Vector3.one * Mathf.LerpUnclamped(0.92f, 1f, EaseOutBack(t));
+                if (group != null) group.alpha = eased;
+                if (panel != null)
+                    panel.localScale = Vector3.one * Mathf.LerpUnclamped(fromScale, 1f, EaseOutBack(t));
 
                 yield return null;
             }
 
-            if (gameOverGroup != null) gameOverGroup.alpha = 1f;
-            if (gameOverPanel != null) gameOverPanel.localScale = Vector3.one;
+            if (group != null) group.alpha = 1f;
+            if (panel != null) panel.localScale = Vector3.one;
+
             _screenFade = null;
+            _startFade = null;
         }
 
         private static float EaseOutBack(float t)

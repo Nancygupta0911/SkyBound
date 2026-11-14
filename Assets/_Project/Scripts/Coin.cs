@@ -41,6 +41,7 @@ namespace Skybound
         private void OnTriggerEnter(Collider other)
         {
             if (_collected || !other.CompareTag("Player")) return;
+            if (GameManager.Instance != null && !GameManager.Instance.IsRunning) return;
             Collect();
         }
 

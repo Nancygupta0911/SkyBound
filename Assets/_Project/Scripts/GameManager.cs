@@ -24,13 +24,14 @@ namespace Skybound
 
         public int Coins => _coinsCollected;
         public int TotalCoins => _coins != null ? _coins.Length : 0;
-        public bool IsRunning { get; private set; } = true;
+        public bool IsRunning { get; private set; }
         public PlayerController Player => player;
         public float KillHeight => killHeight;
 
         public event Action<int, int> CoinsChanged;
         public event Action PlayerDied;
         public event Action RunReset;
+        public event Action RunStarted;
 
         public Vector3 SpawnPosition =>
             spawnPoint != null ? spawnPoint.position + Vector3.up * 0.05f : Vector3.up;
@@ -43,6 +44,10 @@ namespace Skybound
             Instance = this;
             _coins = FindObjectsByType<Coin>();
             if (player == null) player = FindAnyObjectByType<PlayerController>();
+
+            // The run starts from the title screen.
+            IsRunning = false;
+            if (player != null) player.SetInputEnabled(false);
         }
 
         private void Start()
@@ -69,6 +74,16 @@ namespace Skybound
             if (!IsRunning) return;
             _coinsCollected++;
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
+        }
+
+        /// <summary>Starts the run from the title screen.</summary>
+        public void StartRun()
+        {
+            if (IsRunning) return;
+
+            IsRunning = true;
+            if (player != null) player.SetInputEnabled(true);
+            RunStarted?.Invoke();
         }
 
         /// <summary>Ends the run: freezes the player and raises <see cref="PlayerDied"/>.</summary>
