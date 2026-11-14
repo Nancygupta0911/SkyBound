@@ -42,6 +42,7 @@ namespace Skybound
         private float _lastJumpPressedTime = -99f;
         private bool _wasGrounded;
         private bool _inputEnabled = true;
+        private bool _frozen;
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int GroundedHash = Animator.StringToHash("Grounded");
@@ -98,6 +99,8 @@ namespace Skybound
 
         private void Update()
         {
+            if (_frozen) return;
+
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
 
@@ -223,9 +226,29 @@ namespace Skybound
             _wasGrounded = false;
         }
 
+        /// <summary>Stops the character completely (used when the run ends).</summary>
+        public void Freeze()
+        {
+            _frozen = true;
+            _inputEnabled = false;
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+
+            if (_controller != null) _controller.enabled = false;
+
+            if (_animator != null)
+            {
+                _animator.SetFloat(SpeedHash, 0f);
+                _animator.SetBool(GroundedHash, true);
+                _animator.SetFloat(VerticalSpeedHash, 0f);
+            }
+        }
+
         /// <summary>Restores the player to a spawn point and re-enables input.</summary>
         public void Respawn(Vector3 position, Quaternion rotation)
         {
+            _frozen = false;
+            if (_controller != null) _controller.enabled = true;
             Teleport(position, rotation);
             SetInputEnabled(true);
         }

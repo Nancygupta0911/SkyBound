@@ -5,6 +5,8 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
@@ -38,7 +40,9 @@ public static class BuildGameplay
 
         var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         EnsureGameManager(log);
-        EnsureHud(font, panelSprite, coinIcon, log);
+        EnsureDeathZone(log);
+        EnsureEventSystem(log);
+        EnsureUI(font, panelSprite, coinIcon, log);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
@@ -326,13 +330,41 @@ public static class BuildGameplay
         var serialized = new SerializedObject(manager);
         if (spawn != null) serialized.FindProperty("spawnPoint").objectReferenceValue = spawn.transform;
         if (player != null) serialized.FindProperty("player").objectReferenceValue = player;
+        serialized.FindProperty("killHeight").floatValue = -25f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(manager);
 
         log.AppendLine("GameManager ready (spawn=" + (spawn != null) + ", player=" + (player != null) + ").");
     }
 
-    static void EnsureHud(TMP_FontAsset font, Sprite panelSprite, Sprite coinIcon, StringBuilder log)
+    static void EnsureDeathZone(StringBuilder log)
+    {
+        var existing = GameObject.Find("DeathZone");
+        if (existing != null) Object.DestroyImmediate(existing);
+
+        var level = GameObject.Find("Level");
+        var go = new GameObject("DeathZone");
+        if (level != null) go.transform.SetParent(level.transform, false);
+        go.transform.position = new Vector3(2f, -34f, 29f);
+
+        var box = go.AddComponent<BoxCollider>();
+        box.isTrigger = true;
+        box.size = new Vector3(120f, 20f, 160f);
+        go.AddComponent<DeathZone>();
+
+        log.AppendLine("Death zone created (trigger top y=-24).");
+    }
+
+    static void EnsureEventSystem(StringBuilder log)
+    {
+        var existing = Object.FindAnyObjectByType<EventSystem>();
+        if (existing != null) return;
+
+        var go = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+        log.AppendLine("EventSystem created with InputSystemUIInputModule.");
+    }
+
+    static void EnsureUI(TMP_FontAsset font, Sprite panelSprite, Sprite coinIcon, StringBuilder log)
     {
         var existing = GameObject.Find("UI");
         if (existing != null) Object.DestroyImmediate(existing);
@@ -400,13 +432,132 @@ public static class BuildGameplay
         label.textWrappingMode = TextWrappingModes.NoWrap;
         label.raycastTarget = false;
 
+        var gameOver = BuildGameOver(canvasObject.transform, font, panelSprite, out CanvasGroup gameOverGroup,
+            out RectTransform gameOverPanel, out TMP_Text gameOverScore, out Button restartButton);
+
         var serialized = new SerializedObject(uiManager);
         serialized.FindProperty("coinLabel").objectReferenceValue = label;
         serialized.FindProperty("coinPulseTarget").objectReferenceValue = labelRect;
+        serialized.FindProperty("gameOverScreen").objectReferenceValue = gameOver;
+        serialized.FindProperty("gameOverGroup").objectReferenceValue = gameOverGroup;
+        serialized.FindProperty("gameOverPanel").objectReferenceValue = gameOverPanel;
+        serialized.FindProperty("gameOverScore").objectReferenceValue = gameOverScore;
+        serialized.FindProperty("restartButton").objectReferenceValue = restartButton;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(uiManager);
 
-        log.AppendLine("HUD created with coin counter.");
+        gameOver.SetActive(false);
+        log.AppendLine("HUD and Game Over screen created.");
+    }
+
+    static GameObject BuildGameOver(Transform parent, TMP_FontAsset font, Sprite panelSprite,
+        out CanvasGroup group, out RectTransform panel, out TMP_Text score, out Button restart)
+    {
+        RectTransform screen = NewRect("GameOver", parent);
+        Stretch(screen);
+        group = screen.gameObject.AddComponent<CanvasGroup>();
+
+        RectTransform dim = NewRect("Dim", screen);
+        Stretch(dim);
+        var dimImage = dim.gameObject.AddComponent<Image>();
+        dimImage.color = new Color(0.02f, 0.04f, 0.09f, 0.62f);
+
+        RectTransform panelShadow = NewRect("PanelShadow", screen);
+        Center(panelShadow, new Vector2(0f, -14f), new Vector2(760f, 520f));
+        AddSliced(panelShadow, panelSprite, new Color(0.01f, 0.02f, 0.05f, 0.45f), false);
+
+        panel = NewRect("Panel", screen);
+        Center(panel, Vector2.zero, new Vector2(760f, 520f));
+        AddSliced(panel, panelSprite, new Color(0.07f, 0.11f, 0.21f, 0.97f), true);
+
+        RectTransform accent = NewRect("Accent", panel);
+        accent.anchorMin = new Vector2(0.5f, 1f);
+        accent.anchorMax = new Vector2(0.5f, 1f);
+        accent.pivot = new Vector2(0.5f, 1f);
+        accent.anchoredPosition = new Vector2(0f, -26f);
+        accent.sizeDelta = new Vector2(560f, 5f);
+        var accentImage = accent.gameObject.AddComponent<Image>();
+        accentImage.color = new Color(1f, 0.82f, 0.32f, 0.9f);
+        accentImage.raycastTarget = false;
+
+        RectTransform titleRect = NewRect("Title", panel);
+        Center(titleRect, new Vector2(0f, 145f), new Vector2(700f, 120f));
+        AddText(titleRect, font, "YOU FELL!", 96f, new Color(1f, 0.94f, 0.79f), TextAlignmentOptions.Center);
+
+        RectTransform subtitleRect = NewRect("Subtitle", panel);
+        Center(subtitleRect, new Vector2(0f, 62f), new Vector2(700f, 34f));
+        var subtitle = AddText(subtitleRect, font, "FINAL SCORE", 26f, new Color(0.62f, 0.72f, 0.9f), TextAlignmentOptions.Center);
+        subtitle.characterSpacing = 10f;
+
+        RectTransform scoreRect = NewRect("Score", panel);
+        Center(scoreRect, new Vector2(0f, 5f), new Vector2(700f, 66f));
+        score = AddText(scoreRect, font, "COINS: 0 / 58", 50f, new Color(1f, 0.82f, 0.32f), TextAlignmentOptions.Center);
+
+        RectTransform buttonShadow = NewRect("RestartShadow", panel);
+        Center(buttonShadow, new Vector2(0f, -130f), new Vector2(340f, 96f));
+        AddSliced(buttonShadow, panelSprite, new Color(0.01f, 0.02f, 0.05f, 0.45f), false);
+
+        RectTransform buttonRect = NewRect("Restart", panel);
+        Center(buttonRect, new Vector2(0f, -120f), new Vector2(340f, 96f));
+        var buttonImage = AddSliced(buttonRect, panelSprite, new Color(0.18f, 0.52f, 0.95f, 1f), true);
+
+        restart = buttonRect.gameObject.AddComponent<Button>();
+        restart.targetGraphic = buttonImage;
+        var colors = restart.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f, 1f);
+        colors.pressedColor = new Color(0.78f, 0.84f, 0.95f, 1f);
+        colors.selectedColor = Color.white;
+        colors.fadeDuration = 0.08f;
+        restart.colors = colors;
+
+        RectTransform buttonLabel = NewRect("Label", buttonRect);
+        Stretch(buttonLabel);
+        AddText(buttonLabel, font, "RESTART", 42f, new Color(1f, 0.96f, 0.86f), TextAlignmentOptions.Center);
+
+        return screen.gameObject;
+    }
+
+    static void Stretch(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+    }
+
+    static void Center(RectTransform rect, Vector2 position, Vector2 size)
+    {
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+    }
+
+    static Image AddSliced(RectTransform rect, Sprite sprite, Color color, bool raycast)
+    {
+        var image = rect.gameObject.AddComponent<Image>();
+        image.sprite = sprite;
+        image.type = Image.Type.Sliced;
+        image.color = color;
+        image.raycastTarget = raycast;
+        return image;
+    }
+
+    static TextMeshProUGUI AddText(RectTransform rect, TMP_FontAsset font, string text, float size,
+        Color color, TextAlignmentOptions alignment)
+    {
+        var label = rect.gameObject.AddComponent<TextMeshProUGUI>();
+        label.font = font;
+        label.text = text;
+        label.fontSize = size;
+        label.fontStyle = FontStyles.Bold;
+        label.color = color;
+        label.alignment = alignment;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.raycastTarget = false;
+        return label;
     }
 
     static RectTransform NewRect(string name, Transform parent)

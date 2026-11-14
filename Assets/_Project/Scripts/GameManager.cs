@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Skybound
 {
     /// <summary>
-    /// Owns the run state: collected coins, the player reference and spawn point.
+    /// Owns the run state: collected coins, the player reference, spawn point and death.
     /// Other systems listen to its events instead of polling.
     /// </summary>
     [DefaultExecutionOrder(-50)]
@@ -16,6 +16,9 @@ namespace Skybound
         [SerializeField] private Transform spawnPoint;
         [SerializeField] private PlayerController player;
 
+        [Header("Fall detection")]
+        [SerializeField] private float killHeight = -25f;
+
         private Coin[] _coins;
         private int _coinsCollected;
 
@@ -23,8 +26,11 @@ namespace Skybound
         public int TotalCoins => _coins != null ? _coins.Length : 0;
         public bool IsRunning { get; private set; } = true;
         public PlayerController Player => player;
+        public float KillHeight => killHeight;
 
         public event Action<int, int> CoinsChanged;
+        public event Action PlayerDied;
+        public event Action RunReset;
 
         public Vector3 SpawnPosition =>
             spawnPoint != null ? spawnPoint.position + Vector3.up * 0.05f : Vector3.up;
@@ -44,6 +50,14 @@ namespace Skybound
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
         }
 
+        private void Update()
+        {
+            if (!IsRunning || player == null) return;
+
+            // Safety net in case the player somehow slips past the death trigger.
+            if (player.transform.position.y < killHeight) KillPlayer();
+        }
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
@@ -55,6 +69,16 @@ namespace Skybound
             if (!IsRunning) return;
             _coinsCollected++;
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
+        }
+
+        /// <summary>Ends the run: freezes the player and raises <see cref="PlayerDied"/>.</summary>
+        public void KillPlayer()
+        {
+            if (!IsRunning) return;
+
+            IsRunning = false;
+            if (player != null) player.Freeze();
+            PlayerDied?.Invoke();
         }
 
         /// <summary>Restarts the run: resets coins, score and player position.</summary>
@@ -72,7 +96,9 @@ namespace Skybound
             }
 
             if (player != null) player.Respawn(SpawnPosition, SpawnRotation);
+
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
+            RunReset?.Invoke();
         }
     }
 }
