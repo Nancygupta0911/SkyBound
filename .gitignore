@@ -47,6 +47,7 @@ Assets/AssetStoreTools*
 # Build artifacts
 Screenshots/
 Logs/
+Data/
 
 # Unity auto-save recovery scenes
 Assets/_Recovery/
