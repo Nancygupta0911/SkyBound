@@ -30,6 +30,7 @@ namespace Skybound
 
         public event Action<int, int> CoinsChanged;
         public event Action PlayerDied;
+        public event Action PlayerWon;
         public event Action RunReset;
         public event Action RunStarted;
 
@@ -73,7 +74,10 @@ namespace Skybound
         {
             if (!IsRunning) return;
             _coinsCollected++;
+            AudioManager.Coin();
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
+
+            if (TotalCoins > 0 && _coinsCollected >= TotalCoins) WinRun();
         }
 
         /// <summary>Starts the run from the title screen.</summary>
@@ -83,6 +87,11 @@ namespace Skybound
 
             IsRunning = true;
             if (player != null) player.SetInputEnabled(true);
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StartMusic();
+                AudioManager.Instance.DuckMusic(false);
+            }
             RunStarted?.Invoke();
         }
 
@@ -93,7 +102,21 @@ namespace Skybound
 
             IsRunning = false;
             if (player != null) player.Freeze();
+            AudioManager.Fall();
+            if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(true);
             PlayerDied?.Invoke();
+        }
+
+        /// <summary>Ends the run on a high note once every coin has been collected.</summary>
+        private void WinRun()
+        {
+            if (!IsRunning) return;
+
+            IsRunning = false;
+            if (player != null) player.SetInputEnabled(false);
+            AudioManager.Win();
+            if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(true);
+            PlayerWon?.Invoke();
         }
 
         /// <summary>Restarts the run: resets coins, score and player position.</summary>
@@ -111,6 +134,8 @@ namespace Skybound
             }
 
             if (player != null) player.Respawn(SpawnPosition, SpawnRotation);
+
+            if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(false);
 
             CoinsChanged?.Invoke(_coinsCollected, TotalCoins);
             RunReset?.Invoke();

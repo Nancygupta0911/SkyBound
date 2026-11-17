@@ -29,6 +29,9 @@ namespace Skybound
         [Header("Ground")]
         [SerializeField] private float groundStick = -2f;
 
+        [Header("Audio")]
+        [SerializeField] private float strideLength = 2.1f;
+
         private CharacterController _controller;
         private Animator _animator;
         private Transform _cameraTransform;
@@ -43,6 +46,7 @@ namespace Skybound
         private bool _wasGrounded;
         private bool _inputEnabled = true;
         private bool _frozen;
+        private float _footstepDistance;
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int GroundedHash = Animator.StringToHash("Grounded");
@@ -134,6 +138,7 @@ namespace Skybound
 
             Vector3 motion = _horizontalVelocity;
             motion.y = _verticalVelocity;
+            float fallSpeed = -_verticalVelocity;
             _controller.Move(motion * dt);
 
             if (wishDirection.sqrMagnitude > 0.0025f)
@@ -143,10 +148,37 @@ namespace Skybound
             }
 
             bool nowGrounded = _controller.isGrounded;
-            if (nowGrounded && !_wasGrounded && _verticalVelocity <= 0f) Landed?.Invoke();
+            if (nowGrounded && !_wasGrounded && _verticalVelocity <= 0f)
+            {
+                Landed?.Invoke();
+                AudioManager.Land(Mathf.Clamp01(fallSpeed / maxFallSpeed));
+            }
             _wasGrounded = nowGrounded;
 
+            UpdateFootsteps(nowGrounded, dt);
             UpdateAnimator(nowGrounded, dt);
+        }
+
+        private void UpdateFootsteps(bool grounded, float dt)
+        {
+            if (!grounded)
+            {
+                _footstepDistance = 0f;
+                return;
+            }
+
+            float speed = new Vector2(_horizontalVelocity.x, _horizontalVelocity.z).magnitude;
+            if (speed < 1.2f)
+            {
+                _footstepDistance = 0f;
+                return;
+            }
+
+            _footstepDistance += speed * dt;
+            if (_footstepDistance < strideLength) return;
+
+            _footstepDistance = 0f;
+            AudioManager.Footstep();
         }
 
         private void TryJump()
@@ -159,6 +191,7 @@ namespace Skybound
             _verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
             _lastJumpPressedTime = -99f;
             _lastGroundedTime = -99f;
+            AudioManager.Jump();
             Jumped?.Invoke();
         }
 

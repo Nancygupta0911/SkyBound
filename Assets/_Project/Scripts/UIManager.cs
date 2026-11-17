@@ -15,6 +15,9 @@ namespace Skybound
         [SerializeField] private CanvasGroup hudGroup;
         [SerializeField] private TMP_Text coinLabel;
         [SerializeField] private RectTransform coinPulseTarget;
+        [SerializeField] private Button muteButton;
+        [SerializeField] private TMP_Text muteLabel;
+        [SerializeField] private CanvasGroup muteGroup;
 
         [Header("Start Screen")]
         [SerializeField] private GameObject startScreen;
@@ -27,6 +30,8 @@ namespace Skybound
         [SerializeField] private GameObject gameOverScreen;
         [SerializeField] private CanvasGroup gameOverGroup;
         [SerializeField] private RectTransform gameOverPanel;
+        [SerializeField] private TMP_Text gameOverTitle;
+        [SerializeField] private TMP_Text gameOverSubtitle;
         [SerializeField] private TMP_Text gameOverScore;
         [SerializeField] private Button restartButton;
 
@@ -36,15 +41,20 @@ namespace Skybound
         private Coroutine _hudFade;
         private Vector2 _titleBasePosition;
 
+        private static readonly Color WonScoreColor = new Color(1f, 0.82f, 0.35f, 1f);
+        private static readonly Color LostScoreColor = new Color(1f, 0.94f, 0.79f, 1f);
+
         private void Awake()
         {
             if (gameOverScreen != null) gameOverScreen.SetActive(false);
             if (startScreen != null) startScreen.SetActive(true);
             if (hudGroup != null) hudGroup.alpha = 0f;
+            if (muteGroup != null) muteGroup.alpha = 0f;
             if (startTitle != null) _titleBasePosition = startTitle.anchoredPosition;
 
             if (restartButton != null) restartButton.onClick.AddListener(HandleRestartClicked);
             if (playButton != null) playButton.onClick.AddListener(HandlePlayClicked);
+            if (muteButton != null) muteButton.onClick.AddListener(HandleMuteClicked);
         }
 
         private void Start()
@@ -54,8 +64,12 @@ namespace Skybound
 
             manager.CoinsChanged += HandleCoinsChanged;
             manager.PlayerDied += HandlePlayerDied;
+            manager.PlayerWon += HandlePlayerWon;
             manager.RunReset += HandleRunReset;
             HandleCoinsChanged(manager.Coins, manager.TotalCoins);
+            UpdateMuteLabel();
+
+            if (AudioManager.Instance != null) AudioManager.Instance.MuteChanged += HandleMuteChanged;
 
             if (startScreen != null && startScreen.activeSelf)
             {
@@ -76,17 +90,27 @@ namespace Skybound
         {
             if (restartButton != null) restartButton.onClick.RemoveListener(HandleRestartClicked);
             if (playButton != null) playButton.onClick.RemoveListener(HandlePlayClicked);
+            if (muteButton != null) muteButton.onClick.RemoveListener(HandleMuteClicked);
 
             GameManager manager = GameManager.Instance;
             if (manager == null) return;
 
             manager.CoinsChanged -= HandleCoinsChanged;
             manager.PlayerDied -= HandlePlayerDied;
+            manager.PlayerWon -= HandlePlayerWon;
             manager.RunReset -= HandleRunReset;
+
+            if (AudioManager.Instance != null) AudioManager.Instance.MuteChanged -= HandleMuteChanged;
+        }
+
+        private void HandleMuteChanged(bool muted)
+        {
+            UpdateMuteLabel();
         }
 
         private void HandlePlayClicked()
         {
+            AudioManager.Click();
             if (GameManager.Instance != null) GameManager.Instance.StartRun();
 
             if (startScreen != null) startScreen.SetActive(false);
@@ -105,12 +129,27 @@ namespace Skybound
 
         private void HandleRestartClicked()
         {
+            AudioManager.Click();
             if (GameManager.Instance != null) GameManager.Instance.ResetRun();
+        }
+
+        private void HandleMuteClicked()
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.ToggleMute();
+            UpdateMuteLabel();
+            AudioManager.Click();
+        }
+
+        private void UpdateMuteLabel()
+        {
+            if (muteLabel == null) return;
+            bool muted = AudioManager.Instance != null && AudioManager.Instance.Muted;
+            muteLabel.text = muted ? "SOUND OFF" : "SOUND ON";
         }
 
         private void HandleCoinsChanged(int coins, int total)
         {
-            if (coinLabel != null) coinLabel.text = "COINS: " + coins;
+            if (coinLabel != null) coinLabel.text = "COINS: " + coins + " / " + total;
 
             if (coinPulseTarget == null || !isActiveAndEnabled) return;
             if (_pulse != null) StopCoroutine(_pulse);
@@ -119,11 +158,29 @@ namespace Skybound
 
         private void HandlePlayerDied()
         {
+            ShowResult("YOU FELL!", "FINAL SCORE", false);
+        }
+
+        private void HandlePlayerWon()
+        {
+            GameManager manager = GameManager.Instance;
+            string subtitle = manager != null ? "ALL " + manager.TotalCoins + " COINS COLLECTED" : "ALL COINS COLLECTED";
+            ShowResult("YOU WIN!", subtitle, true);
+        }
+
+        private void ShowResult(string title, string subtitle, bool won)
+        {
             if (gameOverScreen == null) return;
 
             GameManager manager = GameManager.Instance;
+            if (gameOverTitle != null) gameOverTitle.text = title;
+            if (gameOverSubtitle != null) gameOverSubtitle.text = subtitle;
+
             if (gameOverScore != null && manager != null)
                 gameOverScore.text = "COINS: " + manager.Coins + " / " + manager.TotalCoins;
+
+            if (gameOverScore != null)
+                gameOverScore.color = won ? WonScoreColor : LostScoreColor;
 
             gameOverScreen.SetActive(true);
 
@@ -141,6 +198,7 @@ namespace Skybound
 
             if (gameOverScreen != null) gameOverScreen.SetActive(false);
             if (hudGroup != null) hudGroup.alpha = 1f;
+            if (muteGroup != null) muteGroup.alpha = 1f;
         }
 
         private IEnumerator Pulse()
@@ -165,15 +223,19 @@ namespace Skybound
             if (hudGroup == null) yield break;
 
             float start = hudGroup.alpha;
+            float muteStart = muteGroup != null ? muteGroup.alpha : target;
             float elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                hudGroup.alpha = Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / duration));
+                float t = Mathf.Clamp01(elapsed / duration);
+                hudGroup.alpha = Mathf.Lerp(start, target, t);
+                if (muteGroup != null) muteGroup.alpha = Mathf.Lerp(muteStart, target, t);
                 yield return null;
             }
 
             hudGroup.alpha = target;
+            if (muteGroup != null) muteGroup.alpha = target;
             _hudFade = null;
         }
 

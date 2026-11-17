@@ -24,6 +24,16 @@ All assets are free for use. Licenses are recorded below.
 | Skyboxes (day, morning) | Kenney | https://kenney.nl/assets/skyboxes | CC0 1.0 |
 | Particle Pack (soft circles, smoke, stars, magic) | Kenney | https://kenney.nl/assets/particle-pack | CC0 1.0 |
 
+## Audio
+
+| Asset | Author | Source | License |
+|---|---|---|---|
+| Coin pickups (`handleCoins`, `handleCoins2`) | Kenney | https://kenney.nl/assets/rpg-audio | CC0 1.0 |
+| Jump (`maximize_002`) | Kenney | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
+| Landing + grass footsteps (`impactSoft_medium_001`, `footstep_grass_*`) | Kenney | https://kenney.nl/assets/impact-sounds | CC0 1.0 |
+| UI click (`click1`) | Kenney | https://kenney.nl/assets/ui-audio | CC0 1.0 |
+| Music loop (`skybound_theme`), fall whistle (`fall`), win chime (`win`) | SKYBOUND team | Synthesized from scratch for this project | CC0 1.0 |
+
 ## Notes
 
 - Kenney packs are released under CC0 1.0 Universal (public domain).

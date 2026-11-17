@@ -34,19 +34,25 @@ static hosts without custom headers).
 | Move | `WASD` / arrow keys |
 | Jump | `Space` (hold for a higher jump) |
 | Orbit camera | Mouse |
+| Mute / unmute | `M` or the on-screen sound button |
 
 ## Goal
 
 Collect all **58 coins** across the islands without falling into the open sky below.
-Touching a coin adds it to the HUD counter with a particle burst. Falling below the
-level shows **YOU FELL!** with your final score; **RESTART** resets the run, the
-coins and the player.
+The HUD shows a live `COINS: n / 58` counter that pulses on every pickup. Touching
+a coin adds it to the counter with a particle burst; falling below the level shows
+**YOU FELL!** with your final score, and collecting every coin ends the run on
+**YOU WIN!**. **RESTART** resets the run, the coins and the player.
+
+Music and sound effects (pickup, jump, landing, footsteps, fall, win) are CC0:
+Kenney packs plus an original theme synthesized for this project.
 
 ## Project layout
 
 ```
 Assets/_Project/
-  Art/          Kenney + Quaternius models, textures, audio and licenses
+  Art/          Kenney + Quaternius models, textures and licenses
+  Audio/        Music loop and sound effects
   Materials/    URP Lit materials, skybox and post-process volume
   Prefabs/      Platforms, coins, props, player and pickup effect
   Scenes/       Skybound.unity
@@ -63,7 +69,8 @@ Assets/_Project/
 | `CameraFollow` | Smooth third-person orbit with sphere-cast collision |
 | `Coin` | Spin/bob, pickup burst and reset |
 | `GameManager` | Run state, score, fall detection, spawn and restart |
-| `UIManager` | Title screen, HUD, Game Over and UI animation |
+| `UIManager` | Title screen, coin HUD, result screens, mute button and UI animation |
+| `AudioManager` | Music loop, pooled SFX, persisted mute toggle |
 | `DeathZone` | Trigger volume that ends the run below the level |
 
 All art is CC0 or CC-BY; see `Assets/_Project/CREDITS.md` for details.
