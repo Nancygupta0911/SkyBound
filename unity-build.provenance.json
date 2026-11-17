@@ -6,8 +6,8 @@
   },
   "outcome": "success",
   "exitCode": 0,
-  "startedAt": "2026-11-17T16:21:10.721Z",
-  "endedAt": "2026-11-17T16:30:42.814Z",
+  "startedAt": "2026-11-17T17:46:08.904Z",
+  "endedAt": "2026-11-17T17:57:31.954Z",
   "editor": {
     "version": "6000.6.9f1",
     "changeset": "8c45277fb9c5",
@@ -17,11 +17,11 @@
     "target": "Skybound - Desktop - Release",
     "profile": "Assets/Settings/Build Profiles/Skybound - Desktop - Release.asset",
     "outputPath": "Builds/WebGL",
-    "logFile": "Logs/build-webgl.log"
+    "logFile": "Logs/build-Skybound - Desktop - Release-1794937568630.log"
   },
   "source": {
     "vcs": "git",
-    "revision": "29c7fba2973ba22a549fc9064b75ae345d3aa38b",
+    "revision": "d4497ecb8afb76682758187a77b5963de121d84d",
     "dirty": true
   },
   "packages": {
