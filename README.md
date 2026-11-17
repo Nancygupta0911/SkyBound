@@ -2,11 +2,30 @@
 
 A stylized 3D floating-island platformer built in Unity 6 (URP).
 
-## Play
+## Play in your browser
+
+**https://nancygupta0911.github.io/SkyBound/**
+
+The WebGL build is published from the `gh-pages` branch and runs in any
+desktop browser with WebGL 2.
+
+## Play in the editor
 
 1. Open the project in Unity 6 (6000.6.9f1).
 2. Open `Assets/_Project/Scenes/Skybound.unity`.
 3. Press **Play**, then press **PLAY** on the title screen.
+
+## Build
+
+The project ships one WebGL build profile: `Assets/Settings/Build Profiles/Skybound - Desktop - Release.asset`.
+
+```
+unity build --profile "Skybound - Desktop - Release" --output Builds/WebGL --allow-dirty-build
+```
+
+Publishing: copy `Builds/WebGL` into a clean branch, push it as `gh-pages`
+(the build is Gzip-compressed with decompression fallback, so it works on
+static hosts without custom headers).
 
 ## Controls
 
