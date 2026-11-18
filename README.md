@@ -60,8 +60,11 @@ unity build --profile "Skybound - Desktop - Release" --output Builds/WebGL --all
 Windows VR build (needs the Windows build support module; no extra XR module):
 
 ```
-unity build --target StandaloneWindows64 --output Builds/WindowsVR --allow-dirty-build
+unity build --target StandaloneWindows64 --output Builds/WindowsVR/SKYBOUND.exe --allow-dirty-build
 ```
+
+The output path is the player executable, so the build lands in
+`Builds/WindowsVR/` as `SKYBOUND.exe` plus `SKYBOUND_Data`.
 
 OpenXR is configured for the Standalone build target only, so the WebGL build
 stays flat and unaffected.
