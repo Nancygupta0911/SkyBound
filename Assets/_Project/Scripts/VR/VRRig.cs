@@ -114,6 +114,10 @@ namespace Skybound
 
             ApplyOrbit();
             VRSession.Register(this, vrCamera);
+
+            // After a restart the character teleports back to the spawn point;
+            // snap the view behind it instead of flying across the level.
+            if (GameManager.Instance != null) GameManager.Instance.RunReset += Recentre;
         }
 
         private void OnEnable()
@@ -135,6 +139,9 @@ namespace Skybound
             _turnAction?.Dispose();
             _jumpAction?.Dispose();
             _muteAction?.Dispose();
+
+            if (GameManager.Instance != null) GameManager.Instance.RunReset -= Recentre;
+
             VRSession.Unregister(this);
         }
 

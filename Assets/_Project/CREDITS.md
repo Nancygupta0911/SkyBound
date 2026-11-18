@@ -34,6 +34,16 @@ All assets are free for use. Licenses are recorded below.
 | UI click (`click1`) | Kenney | https://kenney.nl/assets/ui-audio | CC0 1.0 |
 | Music loop (`skybound_theme`), fall whistle (`fall`), win chime (`win`) | SKYBOUND team | Synthesized from scratch for this project | CC0 1.0 |
 
+## VR
+
+| Asset | Author | Source | License |
+|---|---|---|---|
+| XR Plug-in Management 4.7.0 (`com.unity.xr.management`) | Unity Technologies | https://docs.unity3d.com/Packages/com.unity.xr.management@4.7/manual/index.html | Unity Companion License |
+| OpenXR Plugin 1.19.0 (`com.unity.xr.openxr`) | Unity Technologies | https://docs.unity3d.com/Packages/com.unity.xr.openxr@1.19/manual/index.html | Unity Companion License |
+
+No third-party VR art, models or audio was added: the VR mode reuses the
+existing level, character, UI and sounds.
+
 ## Notes
 
 - Kenney packs are released under CC0 1.0 Universal (public domain).
