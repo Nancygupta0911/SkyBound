@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR;
@@ -54,7 +55,7 @@ namespace Skybound
 
         public bool IsActive => VRSession.IsVR;
 
-        private void Awake()
+        private IEnumerator Start()
         {
             if (player == null)
             {
@@ -69,11 +70,16 @@ namespace Skybound
 
             BuildActions();
 
+            // XR Plug-in Management starts the loader asynchronously, so the
+            // headset only reports as active a frame or two after the scene
+            // loads. Wait for that before choosing the camera path.
+            yield return VRSession.Resolve();
+
             if (!VRSession.IsVR)
             {
                 if (vrCamera != null) vrCamera.gameObject.SetActive(false);
                 enabled = false;
-                return;
+                yield break;
             }
 
             if (flatCamera != null)

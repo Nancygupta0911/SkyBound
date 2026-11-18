@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,19 +34,36 @@ namespace Skybound
             _rect = transform as RectTransform;
         }
 
-        private void Start()
+        private IEnumerator Start()
         {
-            if (!VRSession.IsVR || canvas == null)
+            if (canvas == null)
             {
                 enabled = false;
-                return;
+                yield break;
             }
+
+            // The VR/flat decision is asynchronous (XR starts after the scene
+            // loads), so wait for it instead of assuming flat.
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!VRSession.Ready && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            if (!VRSession.IsVR)
+            {
+                enabled = false;
+                yield break;
+            }
+
+            // The rig registers its camera after it has resolved the mode.
+            float cameraDeadline = Time.realtimeSinceStartup + 2f;
+            while (VRSession.Camera == null && Time.realtimeSinceStartup < cameraDeadline)
+                yield return null;
 
             _camera = VRSession.Camera;
             if (_camera == null)
             {
                 enabled = false;
-                return;
+                yield break;
             }
 
             canvas.renderMode = RenderMode.WorldSpace;
