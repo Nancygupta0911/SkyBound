@@ -32,6 +32,9 @@ namespace Skybound
         [Header("Audio")]
         [SerializeField] private float strideLength = 2.1f;
 
+        [Header("XR input")]
+        [SerializeField, Range(0f, 0.5f)] private float stickDeadzone = 0.18f;
+
         private CharacterController _controller;
         private Animator _animator;
         private Transform _cameraTransform;
@@ -56,6 +59,9 @@ namespace Skybound
         public float VerticalVelocity => _verticalVelocity;
         public bool InputEnabled => _inputEnabled;
 
+        /// <summary>Horizontal speed in metres per second (used by the VR comfort vignette).</summary>
+        public float PlanarSpeed => new Vector2(_horizontalVelocity.x, _horizontalVelocity.z).magnitude;
+
         public event System.Action Jumped;
         public event System.Action Landed;
 
@@ -79,8 +85,11 @@ namespace Skybound
                 .With("Down", "<Keyboard>/downArrow")
                 .With("Left", "<Keyboard>/leftArrow")
                 .With("Right", "<Keyboard>/rightArrow");
+            _moveAction.AddBinding("<XRController>{LeftHand}/primary2DAxis");
 
             _jumpAction = new InputAction("Jump", InputActionType.Button, "<Keyboard>/space");
+            _jumpAction.AddBinding("<XRController>{RightHand}/primaryButton");
+            _jumpAction.AddBinding("<XRController>{LeftHand}/primaryButton");
         }
 
         private void OnEnable()
@@ -110,7 +119,7 @@ namespace Skybound
 
             if (_controller.isGrounded) _lastGroundedTime = Time.time;
 
-            Vector2 input = _inputEnabled ? _moveAction.ReadValue<Vector2>() : Vector2.zero;
+            Vector2 input = _inputEnabled ? ApplyDeadzone(_moveAction.ReadValue<Vector2>()) : Vector2.zero;
 
             if (_inputEnabled && _jumpAction.WasPressedThisFrame())
                 _lastJumpPressedTime = Time.time;
@@ -195,6 +204,15 @@ namespace Skybound
             Jumped?.Invoke();
         }
 
+        private Vector2 ApplyDeadzone(Vector2 input)
+        {
+            float magnitude = input.magnitude;
+            if (magnitude <= stickDeadzone) return Vector2.zero;
+
+            float scaled = Mathf.InverseLerp(stickDeadzone, 1f, Mathf.Min(magnitude, 1f));
+            return input / magnitude * scaled;
+        }
+
         private Vector3 CameraRelativeDirection(Vector2 input)
         {
             if (input.sqrMagnitude < 0.0001f) return Vector3.zero;
@@ -233,6 +251,12 @@ namespace Skybound
             _animator.SetFloat(SpeedHash, speed01, 0.08f, dt);
             _animator.SetBool(GroundedHash, grounded);
             _animator.SetFloat(VerticalSpeedHash, _verticalVelocity);
+        }
+
+        /// <summary>Overrides the camera used for camera-relative movement (VR rig).</summary>
+        public void SetCameraTransform(Transform cameraTransform)
+        {
+            _cameraTransform = cameraTransform;
         }
 
         /// <summary>Enables or disables player control without disabling physics.</summary>

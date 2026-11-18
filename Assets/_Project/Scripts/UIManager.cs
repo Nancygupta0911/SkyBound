@@ -44,6 +44,43 @@ namespace Skybound
         private static readonly Color WonScoreColor = new Color(1f, 0.82f, 0.35f, 1f);
         private static readonly Color LostScoreColor = new Color(1f, 0.94f, 0.79f, 1f);
 
+        public bool IsStartScreenVisible => startScreen != null && startScreen.activeSelf;
+        public bool IsResultScreenVisible => gameOverScreen != null && gameOverScreen.activeSelf;
+
+        /// <summary>Starts the run from the title screen (used by the VR controller).</summary>
+        public void Play()
+        {
+            if (IsStartScreenVisible) HandlePlayClicked();
+        }
+
+        /// <summary>Restarts after a win or a fall (used by the VR controller).</summary>
+        public void Restart()
+        {
+            if (IsResultScreenVisible) HandleRestartClicked();
+        }
+
+        /// <summary>Toggles audio from the VR controller.</summary>
+        public void ToggleMute()
+        {
+            HandleMuteClicked();
+        }
+
+        /// <summary>
+        /// Moves the HUD from the top-left corner to the top-centre of the
+        /// panel. Screen-space UI reads better in a corner; a world-space
+        /// panel reads better centred.
+        /// </summary>
+        public void ApplyVRHudLayout()
+        {
+            RectTransform hud = hudGroup != null ? hudGroup.transform as RectTransform : null;
+            if (hud == null) return;
+
+            hud.anchorMin = new Vector2(0.5f, 1f);
+            hud.anchorMax = new Vector2(0.5f, 1f);
+            hud.pivot = new Vector2(0.5f, 1f);
+            hud.anchoredPosition = new Vector2(0f, -36f);
+        }
+
         private void Awake()
         {
             if (gameOverScreen != null) gameOverScreen.SetActive(false);
