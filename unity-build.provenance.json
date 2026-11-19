@@ -6,8 +6,8 @@
   },
   "outcome": "success",
   "exitCode": 0,
-  "startedAt": "2026-11-18T10:54:28.803Z",
-  "endedAt": "2026-11-18T11:10:10.298Z",
+  "startedAt": "2026-11-19T16:13:02.310Z",
+  "endedAt": "2026-11-19T16:38:13.121Z",
   "editor": {
     "version": "6000.6.9f1",
     "changeset": "8c45277fb9c5",
@@ -17,11 +17,11 @@
     "target": "Skybound - Desktop - Release",
     "profile": "Assets/Settings/Build Profiles/Skybound - Desktop - Release.asset",
     "outputPath": "Builds/WebGL",
-    "logFile": "Logs/build-Skybound - Desktop - Release-1794999268538.log"
+    "logFile": "Logs/build-Skybound - Desktop - Release-1795104781756.log"
   },
   "source": {
     "vcs": "git",
-    "revision": "2ac67d6a3a5c531b30db8f134fdbeba9f927f69f",
+    "revision": "36e494bb23af5e500cb5f0e54bd5ede83b98ebf0",
     "dirty": true
   },
   "packages": {
@@ -34,6 +34,7 @@
       "com.unity.collab-proxy": "2.14.0",
       "com.unity.collections": "6.6.0",
       "com.unity.dt.app-ui": "2.3.0",
+      "com.unity.editorcoroutines": "6.6.0",
       "com.unity.ext.nunit": "2.1.0",
       "com.unity.graph-authoring": "1.0.0",
       "com.unity.ide.rider": "3.1.0",
@@ -52,6 +53,8 @@
       "com.unity.test-framework": "1.8.0",
       "com.unity.test-framework.performance": "6.6.0",
       "com.unity.ugui": "2.6.0",
+      "com.unity.xr.arcore": "6.7.1",
+      "com.unity.xr.arfoundation": "6.7.1",
       "com.unity.xr.core-utils": "2.6.0",
       "com.unity.xr.legacyinputhelpers": "3.0.1",
       "com.unity.xr.management": "4.7.0",
